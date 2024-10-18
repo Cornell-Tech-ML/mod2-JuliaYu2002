@@ -45,7 +45,10 @@ def index_to_position(index: Index, strides: Strides) -> int:
 
     """
     # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    convert = 0
+    for pos in range(len(index)): # ex: index = (2, 3), strides = (3, 1) -> (1, 1) = position 4
+        convert += index[pos] * strides[pos]
+    return convert
 
 
 def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
@@ -61,7 +64,20 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
 
     """
     # TODO: Implement for Task 2.1.
-    raise NotImplementedError("Need to implement for Task 2.1")
+    # storage list position to shape position, ex: ordinal = 5 (in storage), calculate the out_index
+    def calc_stride() -> Sequence[int]: # chatgpt gave me this as a way to get the stride of a tensor by using the shape
+        stride = []
+        for x in range(len(shape)):
+            track = 1
+            for i in range(x + 1, len(shape)):
+                track *= shape[i] # the stride is the product of all following dimensions
+            stride.append(track)
+        return stride
+
+    stride = calc_stride()
+    for x in range(len(shape)):
+        out_index[x] = ordinal // stride[x]
+        ordinal = ordinal % stride[x]
 
 
 def broadcast_index(
@@ -196,6 +212,7 @@ class TensorData:
         return index_to_position(array(index), self._strides)
 
     def indices(self) -> Iterable[UserIndex]:
+        """Get iterable of indices"""
         lshape: Shape = array(self.shape)
         out_index: Index = array(self.shape)
         for i in range(self.size):
@@ -207,10 +224,12 @@ class TensorData:
         return tuple((random.randint(0, s - 1) for s in self.shape))
 
     def get(self, key: UserIndex) -> float:
+        """Get data stored at certain index"""
         x: float = self._storage[self.index(key)]
         return x
 
     def set(self, key: UserIndex, val: float) -> None:
+        """Set data at certain index to given value"""
         self._storage[self.index(key)] = val
 
     def tuple(self) -> Tuple[Storage, Shape, Strides]:
@@ -232,7 +251,19 @@ class TensorData:
         ), f"Must give a position to each dimension. Shape: {self.shape} Order: {order}"
 
         # TODO: Implement for Task 2.1.
-        raise NotImplementedError("Need to implement for Task 2.1")
+        newShape = []
+        newStride = []
+        # print(order)
+        for a in order:
+            # print(a)
+            newShape.append(self.shape[a])
+            # print(self.shape[a])
+            # print(self._strides[a])
+            newStride.append(self._strides[a]) # self._strides gives numpy integers for some reason.
+        # print(newShape)
+        # print(newStride)
+        x = TensorData(storage = self._storage, shape = tuple(newShape), strides = tuple(newStride)) # need to change stride order and shape
+        return x
 
     def to_string(self) -> str:
         """Convert to string"""
