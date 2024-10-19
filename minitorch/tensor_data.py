@@ -65,12 +65,14 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     """
     # TODO: Implement for Task 2.1.
     # storage list position to shape position, ex: ordinal = 5 (in storage), calculate the out_index
-    def calc_stride() -> Sequence[int]: # chatgpt gave me this as a way to get the stride of a tensor by using the shape
+    def calc_stride() -> Sequence[int]:
         stride = []
         for x in range(len(shape)):
             track = 1
             for i in range(x + 1, len(shape)):
-                track *= shape[i] # the stride is the product of all following dimensions
+                track *= shape[i]
+                # chatgpt gave me this as a way to get the stride of a tensor by using the shape:
+                # the stride is the product of all following dimensions
             stride.append(track)
         return stride
 
@@ -100,7 +102,35 @@ def broadcast_index(
 
     """
     # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    # chatgpt helped and I did examples to see what this was doing
+    big_ndim = len(big_shape)
+    small_ndim = len(shape)
+    track = []
+    for i in range(max(big_ndim, small_ndim)):
+        big_dim_index = big_ndim - 1 - i  # Index from the end of big_shape
+        small_dim_index = small_ndim - 1 - i  # Index from the end of shape (going backwards to handle broadcasting)
+        
+        if big_dim_index >= 0: # check this so the indexing would be valid
+            big_idx = big_index[big_dim_index]
+        else:
+            big_idx = 0
+        
+        if small_dim_index >= 0:  # If we're within bounds of the smaller shape
+            # Use the index for the small tensor, adjusting as necessary
+            if shape[small_dim_index] == big_shape[big_dim_index]:
+                # If dimensions match, keep the index (since at least 1 dimension stays consistent between the big index and the small index)
+                track.append(big_idx)
+            elif shape[small_dim_index] == 1:
+                # if the small dimension is 1, this means it got broadcasted to the bigger tensor
+                track.append(0) # Typically broadcasted indices default to 0
+            else:
+                raise ValueError("Incompatible dimensions for broadcasting.")
+        else:
+            # If small_dim_index is out of bounds, we can disregard
+            continue
+
+    track.reverse() # since it was added on backwards
+    out_index = np.array(track)
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
@@ -118,7 +148,32 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
 
     """
     # TODO: Implement for Task 2.2.
-    raise NotImplementedError("Need to implement for Task 2.2")
+    newShape = []
+    pad_ones = shape2
+    compare = shape1
+    if len(shape1) != len(shape2):
+        pad_ones = []
+        for x in range(abs(len(shape1) - len(shape2))):
+            pad_ones.append(1)
+        match (len(shape1) > len(shape2)):
+            case 1:
+                pad_ones += shape2
+                compare = shape1
+            case 0:
+                pad_ones += shape1
+                compare = shape2
+
+    if tuple(compare) == tuple(pad_ones):
+        return tuple(pad_ones)
+
+    for dim_index in range(len(compare)):
+        if (compare[dim_index] * pad_ones[dim_index] != compare[dim_index]) and (compare[dim_index] * pad_ones[dim_index] != pad_ones[dim_index]) and (compare[dim_index] != pad_ones[dim_index]):
+            # the current index of the shape should be 1 * something in order to make it broadcastable, incorporates if the 2 are the same, since that should just propogate to the new shape
+            raise IndexingError
+        else:
+            newShape.append(pad_ones[dim_index]) if (compare[dim_index] * pad_ones[dim_index] == pad_ones[dim_index]) else newShape.append(compare[dim_index])
+    return tuple(newShape)
+
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -253,15 +308,9 @@ class TensorData:
         # TODO: Implement for Task 2.1.
         newShape = []
         newStride = []
-        # print(order)
         for a in order:
-            # print(a)
             newShape.append(self.shape[a])
-            # print(self.shape[a])
-            # print(self._strides[a])
             newStride.append(self._strides[a]) # self._strides gives numpy integers for some reason.
-        # print(newShape)
-        # print(newStride)
         x = TensorData(storage = self._storage, shape = tuple(newShape), strides = tuple(newStride)) # need to change stride order and shape
         return x
 

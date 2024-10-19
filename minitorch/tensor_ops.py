@@ -8,6 +8,7 @@ from typing_extensions import Protocol
 from . import operators
 from .tensor_data import (
     MAX_DIMS,
+    IndexingError,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -256,13 +257,32 @@ def tensor_map(
     def _map(
         out: Storage,
         out_shape: Shape,
-        out_strides: Strides,
+        out_strides: Strides, # out... is the resulting tensor with the fn applied to each value in it
         in_storage: Storage,
         in_shape: Shape,
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        """Simple version::
+
+            for i:
+                for j:
+                    out[i, j] = fn(a[i, j])
+
+        Broadcasted version (`a` might be smaller than `out`) ::
+
+            for i:
+                for j:
+                    out[i, j] = fn(a[i, 0])
+        """
+        if in_shape == out_shape: # simple version
+            for i in range(len(in_shape)):
+                for j in range(len(out_shape)):
+                    out[i, j] = fn(in_shape[i, j])
+        # broadcast version
+        out_index = np.array([], dtype = np.int32)
+        for i in range(len(in_storage)):
+            to_index(i, in_shape, out_index)
 
     return _map
 
