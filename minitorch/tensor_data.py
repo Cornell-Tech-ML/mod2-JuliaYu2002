@@ -64,23 +64,14 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
 
     """
     # TODO: Implement for Task 2.1.
-    # storage list position to shape position, ex: ordinal = 5 (in storage), calculate the out_index
-    def calc_stride() -> Sequence[int]:
-        stride = []
-        for x in range(len(shape)):
-            track = 1
-            for i in range(x + 1, len(shape)):
-                track *= shape[i]
-                # chatgpt gave me this as a way to get the stride of a tensor by using the shape:
-                # the stride is the product of all following dimensions
-            stride.append(track)
-        return stride
-
-    stride = calc_stride()
+    stride = strides_from_shape(list(shape))
+    # print(stride, shape, ordinal, out_index)
+    # print(len(stride))
     for x in range(len(shape)):
-        out_index[x] = ordinal // stride[x]
+        # print(x, stride, stride[x])
+        out_index[x] = ordinal // (stride[x] )
         ordinal = ordinal % stride[x]
-
+    # print(out_index, end="\n\n")
 
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
