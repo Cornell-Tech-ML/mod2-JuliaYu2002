@@ -8,6 +8,8 @@ from typing_extensions import Protocol
 from . import operators
 from .tensor_data import (
     MAX_DIMS,
+    IndexingError,
+    OutIndex,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -262,8 +264,32 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        # simple version
+        # for i in range(len(in_storage)):
+        #     out[i] = fn(in_storage[i])
+        # broadcast version
+        total_space = 1
+        for x in out_shape:
+            total_space *= x
 
+        for i in range(total_space):
+            smallIndex = np.array([], dtype=np.int32)
+            bigIndex = np.array([], dtype=np.int32)
+            to_index(i, out_shape, bigIndex) # get index of big tensor that corresponds to current storage spot
+            broadcast_index(bigIndex, out_shape, in_shape, smallIndex) # get index in in_shape that corresponds to the out_shape
+            out[i] = fn(in_storage[index_to_position(smallIndex, in_strides)])
+
+        # for i in range(len(out_shape)):
+        #     for j in range(i):
+        #         outdex = np.array([], dtype=np.int32)
+        #         bigIndex = np.array([out_shape[:i], j, out_shape[i:]], dtype = np.int32)
+        #         broadcast_index(bigIndex, out_shape, in_shape, outdex)
+        """for x in range(len(in_shape)):
+            if in_shape[x] == 1:
+                for a in range(out_shape[x]): # the strides might have to be shape - 1
+                    bigIndex = np.array([out_strides[:x], a, out_strides[x:]], dtype = np.int32)
+                    smallIndex = np.array([in_strides[:x], x, in_strides[x:]], dtype = np.int32)
+                    out[index_to_position(bigIndex, out_strides)] = fn(in_storage[index_to_position(smallIndex, in_strides)])"""
     return _map
 
 
@@ -307,7 +333,30 @@ def tensor_zip(
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        # simple version
+        # counter = 0
+        # for i, j in zip(a_storage, b_storage):
+        #         out[counter] = fn(i, j) 
+        #         counter += 1
+        # broadcast version
+        # if len(a_shape) != len(b_shape):
+        #     one_pad = [1] * (abs(len(a_shape) - len(b_shape)))
+        #     match (len(a_shape) > len(b_shape)):
+        #         case 1:
+        #             b_shape = one_pad + b_shape
+        #         case 0:
+        #             a_shape = one_pad + a_shape
+        total_space = 1
+        for x in out_shape:
+            total_space *= x
+        for i in range(total_space):
+            index_a = np.array([], dtype=np.int32)
+            index_b = np.array([], dtype=np.int32)
+            out_index = np.array([], dtype=np.int32)
+            to_index(i, out_shape, out_index)
+            broadcast_index(out_index, out_shape, a_shape, index_a)
+            broadcast_index(out_index, out_shape, b_shape, index_b)
+            out[i] = fn(a_storage[index_to_position(index_a, a_strides)], b_storage[index_to_position(index_b, b_strides)])
 
     return _zip
 
@@ -338,7 +387,16 @@ def tensor_reduce(
         reduce_dim: int,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        total_space = 1
+        for x in out_shape:
+            total_space *= x
+        for i in range(total_space):
+            index = np.array([], dtype=np.int32)
+            out_index = np.array([], dtype=np.int32)
+            to_index(i, out_shape, out_index)
+            if out_index[reduce_dim] == 1:
+                broadcast_index(out_index, out_shape, a_shape, index)
+                out[i] = fn(a_storage[index_to_position(index, a_strides)], out[i])
 
     return _reduce
 
