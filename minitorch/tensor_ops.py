@@ -373,13 +373,15 @@ def tensor_reduce(
 
         index = np.zeros(len(a_shape), dtype=np.int32)
         out_index = np.zeros(len(out_shape), dtype=np.int32)
-        # print(a_shape)
+        # print("out length", len(out))
+        # print("out shape", out_shape)
+        # print("in storage", a_storage)
+        # print("in stride", a_strides)
+        # print(out)
         if reduce_dim == -1: # reduce over all
             # loop over starting dimensions instead
             # reduce over each dimension
             # reduce down to 1 value eventually
-            # print("out length", len(out))
-            # print("in storage", a_storage)
             for i in range(len(a_shape)):
                 to_index(i, a_shape, index) # current index of the out tensor
                 broadcast_index(index, a_shape, out_shape, out_index) # big index moved to small index
@@ -387,18 +389,26 @@ def tensor_reduce(
                     current_dex = a_shape
                     current_dex[i] = x
                     out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(current_dex, a_strides)], out[index_to_position(out_index, out_strides)])
+            # print(out)
+            # print("reduce all end")
 
         else: # reduce over specific dimension
+            print()
+            print("out length", len(out))
+            print("out shape", out_shape)
+            print("in storage", a_storage)
+            print("in stride", a_strides)
+            print(out)
+            print(out.shape)
+            print(total_space)
+            print()
             for i in range(total_space):
-                to_index(i, a_shape, index) # current index of the out tensor
+                to_index(i, a_shape, index) # current index of the in tensor
+                print(index)
+                broadcast_index(index, a_shape, out_shape, out_index) # translate the index of the in tensor to the out tensor
+                print(out_index)
                 if out_index[reduce_dim] == 1: # means that this should be the dimension that was being shrunk down
-                    broadcast_index(index, a_shape, out_shape, out_index)
                     out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index, a_strides)], out[index_to_position(out_index, out_strides)])
-            # for i in range(total_space):
-            #     to_index(i, out_shape, out_index) # current index of the out tensor
-            #     if out_index[reduce_dim] == 1: # means that this should be the dimension that was being shrunk down
-            #         broadcast_index(out_index, out_shape, a_shape, index)
-            #         out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index, a_strides)], out[index_to_position(out_index, out_strides)])
 
     return _reduce
 

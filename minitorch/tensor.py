@@ -259,6 +259,10 @@ class Tensor:
         assert h.ctx is not None
 
         x = h.last_fn._backward(h.ctx, d_output)
+        # print("x:", x)
+        # print("h inputs", h.inputs)
+        print("num inputs", len(h.inputs), "  num outputs", len(x), h.last_fn)
+        print("inputs", h.inputs, "  outputs", x)
         assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}"
         return [
             (inp, inp.expand(self._ensure_tensor(d_in)))
@@ -377,9 +381,9 @@ class Tensor:
     def mean(self, dim: Optional[int] = None) -> Tensor:
         """Take the mean of values in a tensor or along a specific dimension"""
         if dim is None:
-            return Sum.apply(self) * (1 / self._tensor.size)
+            return Sum.apply(self) * (1 / self.size)
         else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) * (1 / self._tensor.size) # type: ignore
+            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) * (1 / self.size) # type: ignore
 
     def permute(self, dim: Optional[int] = None) -> Tensor:
         """Take the pernutation of a tensor"""

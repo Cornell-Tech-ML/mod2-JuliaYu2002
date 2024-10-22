@@ -123,8 +123,8 @@ class Mul(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backward for mul: df/dx = y, df/dy = x, multiply by d_output"""
-        (a,) = ctx.saved_values
-        return grad_output * a[1], grad_output * a[0]
+        t1, t2 = ctx.saved_values
+        return grad_output.f.mul_zip(t2, grad_output), grad_output.f.mul_zip(t1, grad_output)
 
 class Sigmoid(Function):
     @staticmethod
@@ -138,7 +138,10 @@ class Sigmoid(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backward for sigmoid: df/dx = sigmoid * (1 - sigmoid)"""
         sigma = ctx.saved_values[0]
-        return sigma * (1.0 - sigma) * grad_output # not sure if this would work.
+        # sigma * (1.0 - sigma) * grad_output
+        part1 = grad_output.f.add_zip(sigma._ensure_tensor(1.0), grad_output.f.neg_map(sigma))
+        part2 = grad_output.f.mul_zip(sigma, part1)
+        return grad_output.f.mul_zip(part2, grad_output)
 
 class ReLU(Function):
     @staticmethod
@@ -150,7 +153,7 @@ class ReLU(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backward for ReLU (gradient)"""
-        (a,) = ctx.saved_values
+        a = ctx.saved_values[0]
         return grad_output.f.relu_back_zip(a, grad_output)
 
 class Log(Function):
@@ -163,7 +166,7 @@ class Log(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backward for log (the gradient)"""
-        (a,) = ctx.saved_values
+        a = ctx.saved_values[0]
         return grad_output.f.log_back_zip(a, grad_output)
 
 class Exp(Function):
@@ -178,7 +181,7 @@ class Exp(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backward for exponential function: df/dx = E^x, multiply by d_output"""
         out = ctx.saved_values[0]
-        return out * grad_output
+        return grad_output.f.mul_zip(out, grad_output)
 
 class Sum(Function): # TODO?
     @staticmethod
@@ -191,14 +194,14 @@ class Sum(Function): # TODO?
         else:
             dim_val = int(dim.item())
             return a.f.add_reduce(a, dim_val)
-        # a.contiguous().view(int(operators.prod(a.shape)))
-        # return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), dim_val)
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
-        """Backwards for sum"""
-        (a,) = ctx.saved_values
-        return grad_output * a[0] # TODO: FIGURE OUT SUM BACKWARD
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+        """Backwards for sum""" # need to broadcast back into the original shape (a is shape 1 after the forward)
+        a = ctx.saved_values[0]
+        # print("grad output len", len(grad_output.shape), "  tensor a len", len(a.shape))
+        # print(grad_output.f.mul_zip(a._ensure_tensor(1.0), grad_output))
+        return grad_output.f.mul_zip(a._ensure_tensor(1.0), grad_output)
 
 class LT(Function):
     @staticmethod
@@ -210,8 +213,8 @@ class LT(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backward for a < b: result will be a float (either 0 or 1) so derivative is 0 since it's a constant"""
-        (a,) = ctx.saved_values
-        return zeros(a[1].shape), zeros(a[0].shape)
+        t1, t2 = ctx.saved_values
+        return zeros(t2.shape), zeros(t1.shape)
 
 class EQ(Function):
     @staticmethod
@@ -223,8 +226,8 @@ class EQ(Function):
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backward for a == b: result is a float (0 or 1) so derivative is 0 since it's a constant"""
-        (a,) = ctx.saved_values
-        return zeros(a[0].shape), zeros(a[1].shape)
+        t1, t2 = ctx.saved_values
+        return zeros(t2.shape), zeros(t1.shape)
 
 class IsClose(Function):
     @staticmethod
@@ -241,12 +244,12 @@ class Permute(Function): # TODO
             dim_val = -1
         else:
             dim_val = int(dim.item())
-        return Tensor(t1._tensor.permute(dim_val))
+        return minitorch.Tensor(t1._tensor.permute(dim_val), backend=t1.backend)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backwards for permute"""
-        (a,) = ctx.saved_values
+        a = ctx.saved_values[0]
         return a # TODO check this
 
 
