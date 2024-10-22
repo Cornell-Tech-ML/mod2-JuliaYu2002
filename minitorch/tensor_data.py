@@ -64,14 +64,14 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
 
     """
     # TODO: Implement for Task 2.1.
-    stride = strides_from_shape(list(shape))
-    # print(stride, shape, ordinal, out_index)
-    # print(len(stride))
-    for x in range(len(shape)):
-        # print(x, stride, stride[x])
-        out_index[x] = ordinal // (stride[x] )
-        ordinal = ordinal % stride[x]
-    # print(out_index, end="\n\n")
+    total_size = 1
+    for x in shape:
+        total_size *= x
+    
+    for i in range(len(shape) - 1, -1, -1): # loop backwards
+        total_size = total_size // shape[i]
+        out_index[i] = ordinal // total_size
+        ordinal = ordinal % total_size
 
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
@@ -93,35 +93,13 @@ def broadcast_index(
 
     """
     # TODO: Implement for Task 2.2.
-    # chatgpt helped and I did examples to see what this was doing
-    big_ndim = len(big_shape)
-    small_ndim = len(shape)
-    track = []
-    for i in range(max(big_ndim, small_ndim)):
-        big_dim_index = big_ndim - 1 - i  # Index from the end of big_shape
-        small_dim_index = small_ndim - 1 - i  # Index from the end of shape (going backwards to handle broadcasting)
-        
-        if big_dim_index >= 0: # check this so the indexing would be valid
-            big_idx = big_index[big_dim_index]
-        else:
-            big_idx = 0
-        
-        if small_dim_index >= 0:  # If we're within bounds of the smaller shape
-            # Use the index for the small tensor, adjusting as necessary
-            if shape[small_dim_index] == big_shape[big_dim_index]:
-                # If dimensions match, keep the index (since at least 1 dimension stays consistent between the big index and the small index)
-                track.append(big_idx)
-            elif shape[small_dim_index] == 1:
-                # if the small dimension is 1, this means it got broadcasted to the bigger tensor
-                track.append(0) # Typically broadcasted indices default to 0
+    out_index[:] = np.zeros(len(shape), dtype=np.int32) # the [:] makes it so that its modified in place
+    for i in range(len(big_index) - 1, -1, -1):
+        if i < len(shape):
+            if shape[i] == 1:
+                out_index[i] = 0
             else:
-                raise ValueError("Incompatible dimensions for broadcasting.")
-        else:
-            # If small_dim_index is out of bounds, we can disregard
-            continue
-
-    track.reverse() # since it was added on backwards
-    out_index = np.array(track)
+                out_index[i] = big_index[i]
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:

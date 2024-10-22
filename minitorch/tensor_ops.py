@@ -271,25 +271,12 @@ def tensor_map(
         total_space = 1
         for x in out_shape:
             total_space *= x
-
+        smallIndex = np.zeros(len(in_shape), dtype = np.int32)
+        bigIndex = np.zeros(len(out_shape), dtype = np.int32)
         for i in range(total_space):
-            smallIndex = np.array([], dtype=np.int32)
-            bigIndex = np.array([], dtype=np.int32)
             to_index(i, out_shape, bigIndex) # get index of big tensor that corresponds to current storage spot
             broadcast_index(bigIndex, out_shape, in_shape, smallIndex) # get index in in_shape that corresponds to the out_shape
-            out[i] = fn(in_storage[index_to_position(smallIndex, in_strides)])
-
-        # for i in range(len(out_shape)):
-        #     for j in range(i):
-        #         outdex = np.array([], dtype=np.int32)
-        #         bigIndex = np.array([out_shape[:i], j, out_shape[i:]], dtype = np.int32)
-        #         broadcast_index(bigIndex, out_shape, in_shape, outdex)
-        """for x in range(len(in_shape)):
-            if in_shape[x] == 1:
-                for a in range(out_shape[x]): # the strides might have to be shape - 1
-                    bigIndex = np.array([out_strides[:x], a, out_strides[x:]], dtype = np.int32)
-                    smallIndex = np.array([in_strides[:x], x, in_strides[x:]], dtype = np.int32)
-                    out[index_to_position(bigIndex, out_strides)] = fn(in_storage[index_to_position(smallIndex, in_strides)])"""
+            out[index_to_position(bigIndex, out_strides)] = fn(in_storage[index_to_position(smallIndex, in_strides)])
     return _map
 
 
@@ -339,25 +326,18 @@ def tensor_zip(
         #         out[counter] = fn(i, j) 
         #         counter += 1
         # broadcast version
-        # if len(a_shape) != len(b_shape):
-        #     one_pad = [1] * (abs(len(a_shape) - len(b_shape)))
-        #     match (len(a_shape) > len(b_shape)):
-        #         case 1:
-        #             b_shape = one_pad + b_shape
-        #         case 0:
-        #             a_shape = one_pad + a_shape
         total_space = 1
         for x in out_shape:
             total_space *= x
+        
+        index_a = np.zeros(len(a_shape), dtype=np.int32)
+        index_b = np.zeros(len(b_shape), dtype=np.int32)
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
         for i in range(total_space):
-            index_a = np.array([], dtype=np.int32)
-            index_b = np.array([], dtype=np.int32)
-            out_index = np.array([], dtype=np.int32)
-            to_index(i, out_shape, out_index)
-            broadcast_index(out_index, out_shape, a_shape, index_a)
+            to_index(i, out_shape, out_index) # position in big tensor (tuple)
+            broadcast_index(out_index, out_shape, a_shape, index_a) # map position from big into position in smalls 
             broadcast_index(out_index, out_shape, b_shape, index_b)
-            out[i] = fn(a_storage[index_to_position(index_a, a_strides)], b_storage[index_to_position(index_b, b_strides)])
-
+            out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index_a, a_strides)], b_storage[index_to_position(index_b, b_strides)])
     return _zip
 
 
@@ -390,13 +370,35 @@ def tensor_reduce(
         total_space = 1
         for x in out_shape:
             total_space *= x
-        for i in range(total_space):
-            index = np.array([], dtype=np.int32)
-            out_index = np.array([], dtype=np.int32)
-            to_index(i, out_shape, out_index)
-            if out_index[reduce_dim] == 1:
-                broadcast_index(out_index, out_shape, a_shape, index)
-                out[i] = fn(a_storage[index_to_position(index, a_strides)], out[i])
+
+        index = np.zeros(len(a_shape), dtype=np.int32)
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        # print(a_shape)
+        if reduce_dim == -1: # reduce over all
+            # loop over starting dimensions instead
+            # reduce over each dimension
+            # reduce down to 1 value eventually
+            # print("out length", len(out))
+            # print("in storage", a_storage)
+            for i in range(len(a_shape)):
+                to_index(i, a_shape, index) # current index of the out tensor
+                broadcast_index(index, a_shape, out_shape, out_index) # big index moved to small index
+                for x in range(a_shape[i]):
+                    current_dex = a_shape
+                    current_dex[i] = x
+                    out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(current_dex, a_strides)], out[index_to_position(out_index, out_strides)])
+
+        else: # reduce over specific dimension
+            for i in range(total_space):
+                to_index(i, a_shape, index) # current index of the out tensor
+                if out_index[reduce_dim] == 1: # means that this should be the dimension that was being shrunk down
+                    broadcast_index(index, a_shape, out_shape, out_index)
+                    out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index, a_strides)], out[index_to_position(out_index, out_strides)])
+            # for i in range(total_space):
+            #     to_index(i, out_shape, out_index) # current index of the out tensor
+            #     if out_index[reduce_dim] == 1: # means that this should be the dimension that was being shrunk down
+            #         broadcast_index(out_index, out_shape, a_shape, index)
+            #         out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index, a_strides)], out[index_to_position(out_index, out_strides)])
 
     return _reduce
 

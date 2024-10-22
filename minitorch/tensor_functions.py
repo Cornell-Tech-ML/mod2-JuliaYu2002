@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 
 import minitorch
-from minitorch.tensor_data import TensorData
 
 from . import operators
 from .autodiff import Context
@@ -104,7 +103,7 @@ class Add(Function):
 
 class All(Function):
     @staticmethod
-    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor]) -> Tensor:
+    def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
         if dim is not None:
             return a.f.mul_reduce(a, int(dim.item()))
@@ -125,7 +124,7 @@ class Mul(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backward for mul: df/dx = y, df/dy = x, multiply by d_output"""
         (a,) = ctx.saved_values
-        return grad_output * a[0], grad_output * a[1]
+        return grad_output * a[1], grad_output * a[0]
 
 class Sigmoid(Function):
     @staticmethod
@@ -185,16 +184,21 @@ class Sum(Function): # TODO?
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Add all values up (can be dependent on dimension)"""
+        ctx.save_for_backward(a)
         if dim is None: # taken from an ed post
             dim_val = -1
+            return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), dim_val)
         else:
             dim_val = int(dim.item())
-        return a.f.add_reduce(a, dim_val)
+            return a.f.add_reduce(a, dim_val)
+        # a.contiguous().view(int(operators.prod(a.shape)))
+        # return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), dim_val)
 
     @staticmethod
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backwards for sum"""
-        return grad_output, grad_output # TODO: FIGURE OUT SUM BACKWARD
+        (a,) = ctx.saved_values
+        return grad_output * a[0] # TODO: FIGURE OUT SUM BACKWARD
 
 class LT(Function):
     @staticmethod
@@ -207,7 +211,7 @@ class LT(Function):
     def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backward for a < b: result will be a float (either 0 or 1) so derivative is 0 since it's a constant"""
         (a,) = ctx.saved_values
-        return zeros(a[0].shape), zeros(a[1].shape)
+        return zeros(a[1].shape), zeros(a[0].shape)
 
 class EQ(Function):
     @staticmethod
@@ -230,17 +234,17 @@ class IsClose(Function):
 
 class Permute(Function): # TODO
     @staticmethod
-    def forward(ctx: Context, t1: Tensor, dim: Optional[Tensor] = None) -> TensorData:
+    def forward(ctx: Context, t1: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Changes the order of the shape"""
         ctx.save_for_backward(t1._tensor)
         if dim is None:
             dim_val = -1
         else:
             dim_val = int(dim.item())
-        return t1._tensor.permute(dim_val)
+        return Tensor(t1._tensor.permute(dim_val))
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> TensorData:
+    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
         """Backwards for permute"""
         (a,) = ctx.saved_values
         return a # TODO check this

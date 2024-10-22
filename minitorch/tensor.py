@@ -112,7 +112,7 @@ class Tensor:
     def _ensure_tensor(self, b: TensorLike) -> Tensor:
         """Turns a python number into a tensor with the same backend."""
         if isinstance(b, (int, float)):
-            c = Tensor.make([b], (1,), backend=self.backend)
+            c = Tensor.make([b], (1,), backend=self.backend) # type: ignore
         else:
             b._type_(self.backend)
             c = b
@@ -269,7 +269,7 @@ class Tensor:
         """The prelude to backprop"""
         if grad_output is None:
             assert self.shape == (1,), "Must provide grad_output if non-scalar"
-            grad_output = Tensor.make([1.0], (1,), backend=self.backend)
+            grad_output = Tensor.make([1.0], (1,), backend=self.backend) # type: ignore
         backpropagate(self, grad_output)
 
     def __truediv__(self, b: TensorLike) -> Tensor:
@@ -312,7 +312,7 @@ class Tensor:
 
     def __sub__(self, b: TensorLike) -> Tensor:
         # -
-        return Add.apply(self, -self._ensure_tensor(b))
+        return Add.apply(self, Neg.apply(self._ensure_tensor(b)))
 
     def __neg__(self) -> Tensor:
         # *-1
@@ -331,63 +331,66 @@ class Tensor:
         return LT.apply(self._ensure_tensor(b), self)
 
     def __radd__(self, b: TensorLike) -> Tensor:
-        return self + b
+        return self + self._ensure_tensor(b)
 
     def __rmul__(self, b: TensorLike) -> Tensor:
-        return self * b
+        return self * self._ensure_tensor(b)
 
     def __mul__(self, b: TensorLike) -> Tensor:
         return Mul.apply(self, self._ensure_tensor(b))
 
     def log(self) -> Tensor:
-        """Apply log() to the Scalar"""
+        """Apply log() to the Tensor"""
         return Log.apply(self)
 
     def exp(self) -> Tensor:
-        """Apply exp() to the Scalar"""
+        """Apply exp() to the Tensor"""
         return Exp.apply(self)
 
     def sigmoid(self) -> Tensor:
-        """Apply sigmoid() to the Scalar"""
+        """Apply sigmoid() to the Tensor"""
         return Sigmoid.apply(self)
 
     def relu(self) -> Tensor:
-        """ReLU on a given Scalar"""
+        """ReLU on a given Tensor"""
         return ReLU.apply(self)
     
     def all(self, dim: Optional[int] = None) -> Tensor:
+        """Applies to all values in tensor or a specific dimension"""
         # taken from an ed discussion post
         if dim is None:
             return All.apply(self)
         else:
-            return All.apply(self, Tensor.make([dim], (1,), backend = self.backend))
+            return All.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
     
-    def is_close(self, dim: Optional[int] = None) -> Tensor:
-        if dim is None:
-            return Sum.apply(self)
-        else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend))
+    def is_close(self, a: TensorLike) -> Tensor:
+        """Checks if values in 2 tensors are close"""
+        return IsClose.apply(self, self._ensure_tensor(a))
 
     def sum(self, dim: Optional[int] = None) -> Tensor:
+        """Add all values in a tensor or along a specific dimension"""
         if dim is None:
             return Sum.apply(self)
         else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend))
+            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
 
     def mean(self, dim: Optional[int] = None) -> Tensor:
+        """Take the mean of values in a tensor or along a specific dimension"""
         if dim is None:
             return Sum.apply(self) * (1 / self._tensor.size)
         else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) * (1 / self._tensor.size)
+            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) * (1 / self._tensor.size) # type: ignore
 
     def permute(self, dim: Optional[int] = None) -> Tensor:
+        """Take the pernutation of a tensor"""
         if dim is None:
             return Permute.apply(self)
         else:
-            return Permute.apply(self, Tensor.make([dim], (1,), backend = self.backend))
+            return Permute.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
 
     def view(self, dim: Optional[int] = None) -> Tensor:
+        """Change the shape of a tensor"""
         if dim is None:
             return View.apply(self)
         else:
-            return View.apply(self, Tensor.make([dim], (1,), backend = self.backend))
+            return View.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
