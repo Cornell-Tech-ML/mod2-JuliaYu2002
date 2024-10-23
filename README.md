@@ -151,7 +151,7 @@ Epoch: 550/550, loss: 1.1035539021618226, correct: 50
 ![Simple Loss](./split_loss.png)
 
 Plot info:
-- Dataset: diag
+- Dataset: split
 - Number of points: 50
 - Learning rate: 0.5
 - Number of Epochs: 525
