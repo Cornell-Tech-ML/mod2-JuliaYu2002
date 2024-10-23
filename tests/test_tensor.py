@@ -119,7 +119,6 @@ def test_two_grad_broadcast(
     """Test the grad of a two argument function"""
     name, base_fn, tensor_fn = fn
     t1, t2 = ts
-    # print(tensor_fn(t1, t2))
     grad_check(tensor_fn, t1, t2)
     # broadcast check
     grad_check(tensor_fn, t1.sum(0), t2)
@@ -194,6 +193,9 @@ def test_reduce_forward_one_dim() -> None:
 
     # here 0 means to reduce the 0th dim, 3 -> nothing
     t_summed = t.sum(0)
+    print(t.sum(0))
+    print(t.sum(0).shape)
+    print(t.shape)
 
     # shape (2)
     t_sum_expected = tensor([[11, 16]])

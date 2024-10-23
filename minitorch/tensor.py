@@ -133,11 +133,11 @@ class Tensor:
 
     def __getitem__(self, key: Union[int, UserIndex]) -> float:
         key2 = (key,) if isinstance(key, int) else key
-        return self._tensor.get(key2)
+        return self._tensor.get(key2) # type: ignore
 
     def __setitem__(self, key: Union[int, UserIndex], val: float) -> None:
         key2 = (key,) if isinstance(key, int) else key
-        self._tensor.set(key2, val)
+        self._tensor.set(key2, val) # type: ignore
 
     # Internal methods used for autodiff.
     def _type_(self, backend: TensorBackend) -> None:
@@ -259,10 +259,7 @@ class Tensor:
         assert h.ctx is not None
 
         x = h.last_fn._backward(h.ctx, d_output)
-        # print("x:", x)
-        # print("h inputs", h.inputs)
-        print("num inputs", len(h.inputs), "  num outputs", len(x), h.last_fn)
-        print("inputs", h.inputs, "  outputs", x)
+
         assert len(x) == len(h.inputs), f"Bug in function {h.last_fn}"
         return [
             (inp, inp.expand(self._ensure_tensor(d_in)))
@@ -362,9 +359,9 @@ class Tensor:
     def all(self, dim: Optional[int] = None) -> Tensor:
         """Applies to all values in tensor or a specific dimension"""
         # taken from an ed discussion post
-        if dim is None:
+        if dim is None: # cover the entire tensor
             return All.apply(self)
-        else:
+        else: # cover a specific dim
             return All.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
     
     def is_close(self, a: TensorLike) -> Tensor:
@@ -373,28 +370,22 @@ class Tensor:
 
     def sum(self, dim: Optional[int] = None) -> Tensor:
         """Add all values in a tensor or along a specific dimension"""
-        if dim is None:
-            return Sum.apply(self)
-        else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
+        if dim is None: # no dim given = sum over entire tensor
+            return Sum.apply(self.contiguous().view(self.size), self._ensure_tensor(0))
+        else: # apply to specific dim
+            return Sum.apply(self, self._ensure_tensor(dim))
 
     def mean(self, dim: Optional[int] = None) -> Tensor:
         """Take the mean of values in a tensor or along a specific dimension"""
-        if dim is None:
-            return Sum.apply(self) * (1 / self.size)
-        else:
-            return Sum.apply(self, Tensor.make([dim], (1,), backend = self.backend)) * (1 / self.size) # type: ignore
+        if dim is None: # average over entire tensor
+            return self.sum() / self.size
+        else: # average over specific dimension
+            return self.sum(dim) / self.shape[dim]
 
-    def permute(self, dim: Optional[int] = None) -> Tensor:
+    def permute(self, *dims: int) -> Tensor:
         """Take the pernutation of a tensor"""
-        if dim is None:
-            return Permute.apply(self)
-        else:
-            return Permute.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
+        return Permute.apply(self, tensor(list(dims)))
 
-    def view(self, dim: Optional[int] = None) -> Tensor:
+    def view(self, *dims: int) -> Tensor:
         """Change the shape of a tensor"""
-        if dim is None:
-            return View.apply(self)
-        else:
-            return View.apply(self, Tensor.make([dim], (1,), backend = self.backend)) # type: ignore
+        return View.apply(self, tensor(list(dims)))

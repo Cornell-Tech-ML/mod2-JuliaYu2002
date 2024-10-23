@@ -43,7 +43,9 @@ class TensorOps:
     @staticmethod
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
-    ) -> Callable[[Tensor, int], Tensor]: ...
+    ) -> Callable[[Tensor, int], Tensor]:
+        """Reduce placeholder"""
+        ...
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
@@ -264,10 +266,6 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        # simple version
-        # for i in range(len(in_storage)):
-        #     out[i] = fn(in_storage[i])
-        # broadcast version
         total_space = 1
         for x in out_shape:
             total_space *= x
@@ -320,16 +318,9 @@ def tensor_zip(
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        # simple version
-        # counter = 0
-        # for i, j in zip(a_storage, b_storage):
-        #         out[counter] = fn(i, j) 
-        #         counter += 1
-        # broadcast version
         total_space = 1
         for x in out_shape:
             total_space *= x
-        
         index_a = np.zeros(len(a_shape), dtype=np.int32)
         index_b = np.zeros(len(b_shape), dtype=np.int32)
         out_index = np.zeros(len(out_shape), dtype=np.int32)
@@ -368,47 +359,16 @@ def tensor_reduce(
     ) -> None:
         # TODO: Implement for Task 2.3.
         total_space = 1
-        for x in out_shape:
+        for x in a_shape:
             total_space *= x
-
-        index = np.zeros(len(a_shape), dtype=np.int32)
+        a_index = np.zeros(len(a_shape), dtype=np.int32)
         out_index = np.zeros(len(out_shape), dtype=np.int32)
-        # print("out length", len(out))
-        # print("out shape", out_shape)
-        # print("in storage", a_storage)
-        # print("in stride", a_strides)
-        # print(out)
-        if reduce_dim == -1: # reduce over all
-            # loop over starting dimensions instead
-            # reduce over each dimension
-            # reduce down to 1 value eventually
-            for i in range(len(a_shape)):
-                to_index(i, a_shape, index) # current index of the out tensor
-                broadcast_index(index, a_shape, out_shape, out_index) # big index moved to small index
-                for x in range(a_shape[i]):
-                    current_dex = a_shape
-                    current_dex[i] = x
-                    out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(current_dex, a_strides)], out[index_to_position(out_index, out_strides)])
-            # print(out)
-            # print("reduce all end")
-
-        else: # reduce over specific dimension
-            print()
-            print("out length", len(out))
-            print("out shape", out_shape)
-            print("in storage", a_storage)
-            print("in stride", a_strides)
-            print(out)
-            print(out.shape)
-            print(total_space)
-            print()
-            for i in range(total_space):
-                to_index(i, a_shape, index) # current index of the in tensor
-                print(index)
-                broadcast_index(index, a_shape, out_shape, out_index) # translate the index of the in tensor to the out tensor
-                print(out_index)
-                if out_index[reduce_dim] == 1: # means that this should be the dimension that was being shrunk down
-                    out[index_to_position(out_index, out_strides)] = fn(a_storage[index_to_position(index, a_strides)], out[index_to_position(out_index, out_strides)])
+        for i in range(total_space):
+            to_index(i, a_shape, a_index) # current index of the in tensor
+            broadcast_index(a_index, a_shape, out_shape, out_index) # translate the index of the in tensor to the out tensor
+            out_pos = index_to_position(out_index, out_strides)
+            a_pos = index_to_position(a_index, a_strides)
+            out[out_pos] = fn(out[out_pos], a_storage[a_pos])
 
     return _reduce
 

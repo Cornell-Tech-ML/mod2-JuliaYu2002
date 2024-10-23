@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 
@@ -105,9 +105,9 @@ class All(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Return 1 if all are true"""
-        if dim is not None:
+        if dim is not None: # applies to whatever dim is given
             return a.f.mul_reduce(a, int(dim.item()))
-        else:
+        else: # applies to the 0th dim (the whole thing when flat)
             return a.f.mul_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
 
@@ -187,21 +187,20 @@ class Sum(Function): # TODO?
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Add all values up (can be dependent on dimension)"""
-        ctx.save_for_backward(a)
-        if dim is None: # taken from an ed post
-            dim_val = -1
-            return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), dim_val)
+        ctx.save_for_backward(dim)
+        if dim is not None:
+            return a.f.add_reduce(a, int(dim.item()))
         else:
-            dim_val = int(dim.item())
-            return a.f.add_reduce(a, dim_val)
+            return a.f.add_reduce(a.contiguous().view(int(operators.prod(a.shape))), 0)
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+    def backward(ctx: Context, grad_output: Tensor) -> Union[Tuple[Tensor, Tensor], Tensor]:
         """Backwards for sum""" # need to broadcast back into the original shape (a is shape 1 after the forward)
-        a = ctx.saved_values[0]
-        # print("grad output len", len(grad_output.shape), "  tensor a len", len(a.shape))
-        # print(grad_output.f.mul_zip(a._ensure_tensor(1.0), grad_output))
-        return grad_output.f.mul_zip(a._ensure_tensor(1.0), grad_output)
+        (dim, ) = ctx.saved_values
+        if dim is not None:
+            return (grad_output, zeros(dim.shape))
+        else:
+            return grad_output
 
 class LT(Function):
     @staticmethod
@@ -235,23 +234,21 @@ class IsClose(Function):
         """Checks if 2 tensors have close values"""
         return t1.f.is_close_zip(t1, t2)
 
-class Permute(Function): # TODO
+class Permute(Function):
     @staticmethod
-    def forward(ctx: Context, t1: Tensor, dim: Optional[Tensor] = None) -> Tensor:
+    def forward(ctx: Context, t1: Tensor, dim: Tensor) -> Tensor:
         """Changes the order of the shape"""
-        ctx.save_for_backward(t1._tensor)
-        if dim is None:
-            dim_val = -1
-        else:
-            dim_val = int(dim.item())
-        return minitorch.Tensor(t1._tensor.permute(dim_val), backend=t1.backend)
+        ctx.save_for_backward(dim)
+        dims_tuple = tuple(int(dim[i]) for i in range(dim.size))
+        return minitorch.Tensor(t1._tensor.permute(*dims_tuple), backend = t1.backend)
 
     @staticmethod
-    def backward(ctx: Context, grad_output: Tensor) -> Tensor:
+    def backward(ctx: Context, grad_output: Tensor) -> Tuple[Tensor, Tensor]:
         """Backwards for permute"""
-        a = ctx.saved_values[0]
-        return a # TODO check this
-
+        (dim,) = ctx.saved_values
+        dim_list = [int(dim[i]) for i in range(dim.size)]
+        reversed = [dim_list.index(i) for i in range(len(dim_list))]
+        return (grad_output._new(grad_output._tensor.permute(*reversed)), grad_output.zeros(dim.shape))
 
 class View(Function):
     @staticmethod
