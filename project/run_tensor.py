@@ -6,13 +6,16 @@ Be sure you have minitorch installed in you Virtual Env.
 import minitorch
 from minitorch.tensor_data import Shape
 
+
 # Use this function to make a random parameter in
 # your module.
 def RParam(*shape):
     r = 2 * (minitorch.rand(shape) - 0.5)
     return minitorch.Parameter(r)
 
+
 # TODO: Implement for Task 2.5.
+
 
 class Network(minitorch.Module):
     def __init__(self, hidden_layers):
@@ -43,16 +46,10 @@ class Linear(minitorch.Module):
                 self.weights[
                     i
                 ].append(  # add things into the empty list placed in the list of weights
-                    self.add_parameter(
-                        f"weight_{i}_{j}", RParam(in_size, out_size)
-                    )
+                    self.add_parameter(f"weight_{i}_{j}", RParam(in_size, out_size))
                 )
         for j in range(out_size):
-            self.bias.append(
-                self.add_parameter(
-                    f"bias_{j}", RParam(1, out_size)
-                )
-            )
+            self.bias.append(self.add_parameter(f"bias_{j}", RParam(1, out_size)))
 
     def forward(self, inputs):
         # adjusted_inputs = []
@@ -61,6 +58,7 @@ class Linear(minitorch.Module):
         #     for j in range(len(y)):
         #         y[j] = y[j] + x * self.weights[i][j].value
         return y
+
 
 def default_log_fn(epoch, total_loss, correct, losses):
     print("Epoch ", epoch, " loss ", total_loss, "correct", correct)
