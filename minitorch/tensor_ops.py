@@ -7,7 +7,6 @@ from typing_extensions import Protocol
 
 from . import operators
 from .tensor_data import (
-    MAX_DIMS,
     broadcast_index,
     index_to_position,
     shape_broadcast,
@@ -16,7 +15,7 @@ from .tensor_data import (
 
 if TYPE_CHECKING:
     from .tensor import Tensor
-    from .tensor_data import Index, Shape, Storage, Strides
+    from .tensor_data import Shape, Storage, Strides
 
 
 class MapProto(Protocol):
@@ -41,7 +40,9 @@ class TensorOps:
     @staticmethod
     def reduce(
         fn: Callable[[float, float], float], start: float = 0.0
-    ) -> Callable[[Tensor, int], Tensor]: ...
+    ) -> Callable[[Tensor, int], Tensor]:
+        """Reduce placeholder"""
+        ...
 
     @staticmethod
     def matrix_multiply(a: Tensor, b: Tensor) -> Tensor:
@@ -196,6 +197,7 @@ class SimpleOps(TensorOps):
             fn: function from two floats-to-float to apply
             a (:class:`TensorData`): tensor to reduce over
             dim (int): int of dim to reduce
+            start (float): a starter value to use in adding/multiplying
 
         Returns:
             :class:`TensorData` : new tensor
@@ -262,7 +264,21 @@ def tensor_map(
         in_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        total_space = 1
+        for x in out_shape:
+            total_space *= x
+        smallIndex = np.zeros(len(in_shape), dtype=np.int32)
+        bigIndex = np.zeros(len(out_shape), dtype=np.int32)
+        for i in range(total_space):
+            to_index(
+                i, out_shape, bigIndex
+            )  # get index of big tensor that corresponds to current storage spot
+            broadcast_index(
+                bigIndex, out_shape, in_shape, smallIndex
+            )  # get index in in_shape that corresponds to the out_shape
+            out[index_to_position(bigIndex, out_strides)] = fn(
+                in_storage[index_to_position(smallIndex, in_strides)]
+            )
 
     return _map
 
@@ -307,7 +323,22 @@ def tensor_zip(
         b_strides: Strides,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        total_space = 1
+        for x in out_shape:
+            total_space *= x
+        index_a = np.zeros(len(a_shape), dtype=np.int32)
+        index_b = np.zeros(len(b_shape), dtype=np.int32)
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        for i in range(total_space):
+            to_index(i, out_shape, out_index)  # position in big tensor (tuple)
+            broadcast_index(
+                out_index, out_shape, a_shape, index_a
+            )  # map position from big into position in smalls
+            broadcast_index(out_index, out_shape, b_shape, index_b)
+            out[index_to_position(out_index, out_strides)] = fn(
+                a_storage[index_to_position(index_a, a_strides)],
+                b_storage[index_to_position(index_b, b_strides)],
+            )
 
     return _zip
 
@@ -338,7 +369,19 @@ def tensor_reduce(
         reduce_dim: int,
     ) -> None:
         # TODO: Implement for Task 2.3.
-        raise NotImplementedError("Need to implement for Task 2.3")
+        total_space = 1
+        for x in a_shape:
+            total_space *= x
+        a_index = np.zeros(len(a_shape), dtype=np.int32)
+        out_index = np.zeros(len(out_shape), dtype=np.int32)
+        for i in range(total_space):
+            to_index(i, a_shape, a_index)  # current index of the in tensor
+            broadcast_index(
+                a_index, a_shape, out_shape, out_index
+            )  # translate the index of the in tensor to the out tensor
+            out_pos = index_to_position(out_index, out_strides)
+            a_pos = index_to_position(a_index, a_strides)
+            out[out_pos] = fn(out[out_pos], a_storage[a_pos])
 
     return _reduce
 
