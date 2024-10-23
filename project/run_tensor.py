@@ -4,6 +4,7 @@ Be sure you have minitorch installed in you Virtual Env.
 """
 
 import minitorch
+from minitorch.tensor import Tensor
 from minitorch.tensor_data import Shape
 
 
@@ -29,35 +30,26 @@ class Network(minitorch.Module):
         self.layer3 = Linear(hidden_layers, 1)
 
     def forward(self, x):
-        h = self.layer1.forward(x).relu()
-        middle = [h.relu() for h in self.layer1.forward(x)]
-        end = [h.relu() for h in self.layer2.forward(middle)]
-        return self.layer3.forward(end)[0].sigmoid()
+        a = self.layer1.forward(x).relu()
+        b = self.layer2.forward(a).relu()
+        return self.layer3.forward(b).sigmoid()
 
 
 class Linear(minitorch.Module):
     def __init__(self, in_size, out_size):
         super().__init__()
-        self.weights = []
-        self.bias = []
-        for i in range(in_size):
-            self.weights.append([])  # append an empty list to the weights list
-            for j in range(out_size):
-                self.weights[
-                    i
-                ].append(  # add things into the empty list placed in the list of weights
-                    self.add_parameter(f"weight_{i}_{j}", RParam(in_size, out_size))
-                )
-        for j in range(out_size):
-            self.bias.append(self.add_parameter(f"bias_{j}", RParam(1, out_size)))
+        self.weights = RParam(in_size, out_size)
+        self.bias = RParam(1, out_size)
 
     def forward(self, inputs):
-        # adjusted_inputs = []
-        # y = [b.value for b in self.bias]
-        # for i, x in enumerate(inputs):
-        #     for j in range(len(y)):
-        #         y[j] = y[j] + x * self.weights[i][j].value
-        return y
+        review = inputs.view(*inputs.shape, 1)  # in_size = batch
+        weight_mult = review * self.weights.value
+        reduce_features = weight_mult.sum(1)
+        batch_one_hidden = reduce_features.view(
+            reduce_features.shape[0], reduce_features.shape[2]
+        )
+        batch_hidden = batch_one_hidden + self.bias.value
+        return batch_hidden
 
 
 def default_log_fn(epoch, total_loss, correct, losses):

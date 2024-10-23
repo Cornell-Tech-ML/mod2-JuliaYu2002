@@ -193,7 +193,7 @@ class Exp(Function):
         return grad_output.f.mul_zip(out, grad_output)
 
 
-class Sum(Function):  # TODO?
+class Sum(Function):
     @staticmethod
     def forward(ctx: Context, a: Tensor, dim: Optional[Tensor] = None) -> Tensor:
         """Add all values up (can be dependent on dimension)"""

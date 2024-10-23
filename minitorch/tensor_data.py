@@ -99,12 +99,11 @@ def broadcast_index(
     out_index[:] = np.zeros(
         len(shape), dtype=np.int32
     )  # the [:] makes it so that its modified in place
-    for i in range(len(big_index) - 1, -1, -1):
-        if i < len(shape):
-            if shape[i] == 1:
-                out_index[i] = 0
-            else:
-                out_index[i] = big_index[i]
+    for i in range(len(shape) - 1, -1, -1):  # Loop backwards
+        if big_shape[i] == 1 or shape[i] == 1:
+            out_index[i] = 0
+        elif big_shape[i] == shape[i]:
+            out_index[i] = big_index[i]
 
 
 def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
