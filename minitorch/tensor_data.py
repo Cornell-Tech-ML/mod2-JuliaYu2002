@@ -46,7 +46,9 @@ def index_to_position(index: Index, strides: Strides) -> int:
     """
     # TODO: Implement for Task 2.1.
     convert = 0
-    for pos in range(len(index)): # ex: index = (2, 3), strides = (3, 1) -> (1, 1) = position 4
+    for pos in range(
+        len(index)
+    ):  # ex: index = (2, 3), strides = (3, 1) -> (1, 1) = position 4
         convert += index[pos] * strides[pos]
     return convert
 
@@ -67,11 +69,12 @@ def to_index(ordinal: int, shape: Shape, out_index: OutIndex) -> None:
     total_size = 1
     for x in shape:
         total_size *= x
-    
-    for i in range(len(shape) - 1, -1, -1): # loop backwards
+
+    for i in range(len(shape) - 1, -1, -1):  # loop backwards
         total_size = total_size // shape[i]
         out_index[i] = ordinal // total_size
         ordinal = ordinal % total_size
+
 
 def broadcast_index(
     big_index: Index, big_shape: Shape, shape: Shape, out_index: OutIndex
@@ -93,7 +96,9 @@ def broadcast_index(
 
     """
     # TODO: Implement for Task 2.2.
-    out_index[:] = np.zeros(len(shape), dtype=np.int32) # the [:] makes it so that its modified in place
+    out_index[:] = np.zeros(
+        len(shape), dtype=np.int32
+    )  # the [:] makes it so that its modified in place
     for i in range(len(big_index) - 1, -1, -1):
         if i < len(shape):
             if shape[i] == 1:
@@ -124,7 +129,7 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
         pad_ones = []
         for x in range(abs(len(shape1) - len(shape2))):
             pad_ones.append(1)
-        match (len(shape1) > len(shape2)):
+        match len(shape1) > len(shape2):
             case 1:
                 pad_ones += shape2
                 compare = shape1
@@ -136,13 +141,18 @@ def shape_broadcast(shape1: UserShape, shape2: UserShape) -> UserShape:
         return tuple(pad_ones)
 
     for dim_index in range(len(compare)):
-        if (compare[dim_index] * pad_ones[dim_index] != compare[dim_index]) and (compare[dim_index] * pad_ones[dim_index] != pad_ones[dim_index]) and (compare[dim_index] != pad_ones[dim_index]):
+        if (
+            (compare[dim_index] * pad_ones[dim_index] != compare[dim_index])
+            and (compare[dim_index] * pad_ones[dim_index] != pad_ones[dim_index])
+            and (compare[dim_index] != pad_ones[dim_index])
+        ):
             # the current index of the shape should be 1 * something in order to make it broadcastable, incorporates if the 2 are the same, since that should just propogate to the new shape
             raise IndexingError
         else:
-            newShape.append(pad_ones[dim_index]) if (compare[dim_index] * pad_ones[dim_index] == pad_ones[dim_index]) else newShape.append(compare[dim_index])
+            newShape.append(pad_ones[dim_index]) if (
+                compare[dim_index] * pad_ones[dim_index] == pad_ones[dim_index]
+            ) else newShape.append(compare[dim_index])
     return tuple(newShape)
-
 
 
 def strides_from_shape(shape: UserShape) -> UserStrides:
@@ -281,8 +291,12 @@ class TensorData:
         newStride = []
         for a in order:
             newShape.append(self.shape[a])
-            newStride.append(self._strides[a]) # self._strides gives numpy integers for some reason.
-        x = TensorData(storage = self._storage, shape = tuple(newShape), strides = tuple(newStride)) # need to change stride order and shape
+            newStride.append(
+                self._strides[a]
+            )  # self._strides gives numpy integers for some reason.
+        x = TensorData(
+            storage=self._storage, shape=tuple(newShape), strides=tuple(newStride)
+        )  # need to change stride order and shape
         return x
 
     def to_string(self) -> str:

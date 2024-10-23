@@ -96,6 +96,7 @@ def topological_sort(variable: Variable) -> Iterable[Variable]:
     visit(variable)
     return order
 
+
 def backpropagate(variable: Variable, deriv: Any) -> None:
     """Runs backpropagation on the computation graph in order to
     compute derivatives for the leave nodes.

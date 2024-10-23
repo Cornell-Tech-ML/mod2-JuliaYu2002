@@ -4,6 +4,7 @@ Be sure you have minitorch installed in you Virtual Env.
 """
 
 import minitorch
+from minitorch.tensor_data import Shape
 
 # Use this function to make a random parameter in
 # your module.
@@ -25,6 +26,7 @@ class Network(minitorch.Module):
         self.layer3 = Linear(hidden_layers, 1)
 
     def forward(self, x):
+        h = self.layer1.forward(x).relu()
         middle = [h.relu() for h in self.layer1.forward(x)]
         end = [h.relu() for h in self.layer2.forward(middle)]
         return self.layer3.forward(end)[0].sigmoid()
@@ -42,26 +44,22 @@ class Linear(minitorch.Module):
                     i
                 ].append(  # add things into the empty list placed in the list of weights
                     self.add_parameter(
-                        f"weight_{i}_{j}", minitorch.Scalar(2 * (random.random() - 0.5))
+                        f"weight_{i}_{j}", RParam(in_size, out_size)
                     )
                 )
         for j in range(out_size):
             self.bias.append(
                 self.add_parameter(
-                    f"bias_{j}", minitorch.Scalar(2 * (random.random() - 0.5))
+                    f"bias_{j}", RParam(1, out_size)
                 )
             )
 
-    def forward(self, inputs):  # returns an iterable
-        # TODO: Implement for Task 1.5.
-        adjusted_inputs = []
-        # weights: outer surrounding array: number of inputs, inner arrays: number of inputs to be applied to the current input
-        # bias: corresponding to be added to each sum of weights * input
-        # bias: [..., ..., ...]. inputs: [..., ..., ...]. weights: [[..., ..., ...], [..., ..., ...], ...]
-        y = [b.value for b in self.bias]
-        for i, x in enumerate(inputs):
-            for j in range(len(y)):
-                y[j] = y[j] + x * self.weights[i][j].value
+    def forward(self, inputs):
+        # adjusted_inputs = []
+        # y = [b.value for b in self.bias]
+        # for i, x in enumerate(inputs):
+        #     for j in range(len(y)):
+        #         y[j] = y[j] + x * self.weights[i][j].value
         return y
 
 def default_log_fn(epoch, total_loss, correct, losses):
